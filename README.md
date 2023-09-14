@@ -490,10 +490,17 @@ Do you want to perform these actions in workspace "stage"?
 
 Ответ: Кластер создан с помощью Yandex Managed Service for Kubernetes, создано три ноды, создан региональный кластер, с размещением нод в разных 3 подсетях
 
+![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/fd289264-a320-4054-bd1c-99bc00c27f20)
+
+
 2. В файле `~/.kube/config` находятся данные для доступа к кластеру.
 
 Ответ: Конфигурационный файл получен для созданного кластера с помощью команды 
 
+```
+yc managed-kubernetes cluster get-credentials --id catd205ilrqs17rokmj9 --external
+```
+Содержание конфигурационного файла
 ```
 apiVersion: v1
 clusters:
@@ -548,7 +555,7 @@ kube-system   yc-disk-csi-node-v2-c8kgb              6/6     Running   0        
 kube-system   yc-disk-csi-node-v2-xmvt6              6/6     Running   0          18m
 kube-system   yc-disk-csi-node-v2-xng5b              6/6     Running   0          18m
 ```
-Подключение через Lens
+Подключение к кластеру через Lens
 
 ![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/77e58013-6658-4ff4-a847-a47c0e8d9a71)
 
