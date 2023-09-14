@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netology
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: lug-app
+  namespace: netology
+  labels:
+    k8s-app: lug-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: lug-app
+  template:
+    metadata:
+      name: lug-app
+      labels:
+        k8s-app: lug-app
+    spec:
+      containers:
+      - name: lug-nginx
+        image: cr.yandex/crp52u9gli262gfbvk5r/my-registry:main
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginx-lug
+  namespace: netology
+  labels:
+    k8s-app: lug-app
+spec:
+  ports:
+  - protocol: TCP
+    port: 8080
+  selector:
+    k8s-app: lug-app
+  type: LoadBalancer
