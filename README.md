@@ -1,14 +1,5 @@
-# Дипломный практикум в Yandex.Cloud
-  * [Цели:](#цели)
-  * [Этапы выполнения:](#этапы-выполнения)
-     * [Создание облачной инфраструктуры](#создание-облачной-инфраструктуры)
-     * [Создание Kubernetes кластера](#создание-kubernetes-кластера)
-     * [Создание тестового приложения](#создание-тестового-приложения)
-     * [Подготовка cистемы мониторинга и деплой приложения](#подготовка-cистемы-мониторинга-и-деплой-приложения)
-     * [Установка и настройка CI/CD](#установка-и-настройка-cicd)
-  * [Что необходимо для сдачи задания?](#что-необходимо-для-сдачи-задания)
-  * [Как правильно задавать вопросы дипломному руководителю?](#как-правильно-задавать-вопросы-дипломному-руководителю)
-
+# Дипломный практикум в Yandex.Cloud студента Луговского П.С.
+ 
 ---
 ## Цели:
 
@@ -128,7 +119,49 @@
 Ожидаемый результат:
 
 1. Интерфейс ci/cd сервиса доступен по http.
+
+Ответ: В качестве ci/cd сервиса был выбран GitHub Actions. Была настроен pull образа docker при создании в yandex container registry
+Делал вот по этой инструкции https://nikolaymatrosov.medium.com/github-action-%D0%B4%D0%BB%D1%8F-%D0%BF%D1%83%D1%88%D0%B0-%D0%B2-yandex-cloud-container-registry-cbe91d8b0198
+Немного изменил строки кода, сделав возможным сбор образа с ранее создаваемого также с помощью GitHub Actions
+
+Код отвечающий за регистрацию на yandex container registry и pull docker образа
+```
+deploy:
+
+      runs-on: ubuntu-latest
+      permissions:
+        contents: read
+        packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+        id-token: write
+
+      steps:      
+      - name: Login to Yandex Cloud Container Registry
+        id: login-cr
+        uses: yc-actions/yc-cr-login@v1
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
+
+      - name: Build, tag, and push image to Yandex Cloud Container Registry
+        env:
+          CR_REGISTRY: crp52u9gli262gfbvk5r
+          CR_REPOSITORY: my-registry
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker pull ghcr.io/lugovskoypavel/nginx_sample:main
+          docker tag ghcr.io/lugovskoypavel/nginx_sample:main cr.yandex/$CR_REGISTRY/$CR_REPOSITORY:main
+          docker push cr.yandex/$CR_REGISTRY/$CR_REPOSITORY:main
+```
+
+
 2. При любом коммите в репозиторие с тестовым приложением происходит сборка и отправка в регистр Docker образа.
+
+Ответ: Сборка настроина при любом комите
+
+![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/c2f6ebbc-ecae-4594-b990-2b3f7297a812)
+
+
 3. При создании тега (например, v1.0.0) происходит сборка и отправка с соответствующим label в регистр, а также деплой соответствующего Docker образа в кластер Kubernetes.
 
 ---
