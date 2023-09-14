@@ -38,9 +38,176 @@
 
 Ожидаемые результаты:
 
-1. Terraform сконфигурирован и создание инфраструктуры посредством Terraform возможно без дополнительных ручных действий.
+1. Terraform сконфигурирован и создание инфраструктуры посредством Terraform возможно без дополнительных ручных действий. 
 
-Ответ: Terraform сконфигурирован и создан
+Ответ: Terraform сконфигурирован и создан. В качестве backend выбран Terraform Cloud с одним workspace - stage
+
+```
+terraform {
+  required_providers {
+    yandex = {
+      source = "yandex-cloud/yandex"
+    }
+    
+  }
+  cloud {
+    organization = "lug-org"
+    workspaces {
+      tags = ["stage"]
+    }
+  }
+}
+```
+![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/b0fb7e88-2641-4daa-b981-3e2b5484b862)
+
+
+Конфигурационный файл terraform для yandex cloud
+
+```
+locals {
+  
+  k8s_version = "1.23"
+  
+}
+
+terraform {
+  required_providers {
+    yandex = {
+      source = "yandex-cloud/yandex"
+    }
+    
+  }
+  cloud {
+    organization = "lug-org"
+    workspaces {
+      tags = ["stage"]
+    }
+  }
+}
+
+provider "yandex" {
+  zone = "ru-central1-a"
+  service_account_key_file = "key.json"
+  cloud_id  = "${var.yandex_cloud_id}"
+  folder_id = "${var.yandex_folder_id}"
+}
+
+resource "yandex_kubernetes_cluster" "lugk8s" {
+  network_id = yandex_vpc_network.mynet.id
+ 
+  master {
+    version = local.k8s_version
+    public_ip=true
+    regional {
+      region = "ru-central1"
+      
+      location {
+        zone      = yandex_vpc_subnet.mysubnet-a.zone
+        subnet_id = yandex_vpc_subnet.mysubnet-a.id
+      }
+      location {
+        zone      = yandex_vpc_subnet.mysubnet-b.zone
+        subnet_id = yandex_vpc_subnet.mysubnet-b.id
+      }
+      location {
+        zone      = yandex_vpc_subnet.mysubnet-c.zone
+        subnet_id = yandex_vpc_subnet.mysubnet-c.id
+      }
+    }
+    
+  }
+  service_account_id      = "ajelifsgup0jg2bkjr6t"
+  node_service_account_id = "ajelifsgup0jg2bkjr6t"
+  kms_provider {
+    key_id = yandex_kms_symmetric_key.kms-key.id
+  }
+}
+
+resource "yandex_vpc_network" "mynet" {
+  name = "mynet"
+}
+
+resource "yandex_vpc_subnet" "mysubnet-a" {
+  v4_cidr_blocks = ["10.5.0.0/16"]
+  zone           = "ru-central1-a"
+  network_id     = yandex_vpc_network.mynet.id
+}
+
+resource "yandex_vpc_subnet" "mysubnet-b" {
+  v4_cidr_blocks = ["10.6.0.0/16"]
+  zone           = "ru-central1-b"
+  network_id     = yandex_vpc_network.mynet.id
+}
+
+resource "yandex_vpc_subnet" "mysubnet-c" {
+  v4_cidr_blocks = ["10.7.0.0/16"]
+  zone           = "ru-central1-c"
+  network_id     = yandex_vpc_network.mynet.id
+}
+
+resource "yandex_kms_symmetric_key" "kms-key" {
+  # Ключ для шифрования важной информации, такой как пароли, OAuth-токены и SSH-ключи.
+  name              = "kms-key"
+  default_algorithm = "AES_128"
+  rotation_period   = "8760h" # 1 год.
+}
+
+resource "yandex_kubernetes_node_group" "node-group-0" {
+  cluster_id  = yandex_kubernetes_cluster.lugk8s.id
+  name        = "node-group-0"
+  version     = local.k8s_version
+
+  instance_template {
+    platform_id = "standard-v2"
+    nat         = true
+
+    resources {
+      memory = 4
+      cores  = 2
+    }
+
+    boot_disk {
+      type = "network-hdd"
+      size = 64
+    }
+
+    scheduling_policy {
+      preemptible = false
+    }
+  }
+
+  scale_policy {
+    fixed_scale {
+      size = 3
+    }
+  }
+
+  allocation_policy {
+    location {
+      zone = "ru-central1-a"
+    }
+
+    location {
+      zone = "ru-central1-b"
+    }
+
+    location {
+      zone = "ru-central1-c"
+    }
+  }
+
+  maintenance_policy {
+    auto_upgrade = false
+    auto_repair  = true
+  }
+  
+
+}
+
+```
+2. Полученная конфигурация инфраструктуры является предварительной, поэтому в ходе дальнейшего выполнения задания возможны изменения.
+
+Ответ: Конфигурация создана (уже с k8s кластером)
 
 ```
 PS C:\Users\lugy1\terraform_yandex_k8s> terraform apply
@@ -301,7 +468,6 @@ Do you want to perform these actions in workspace "stage"?
   Terraform will perform the actions described above.
   Only 'yes' will be accepted to approve.
 ```
-2. Полученная конфигурация инфраструктуры является предварительной, поэтому в ходе дальнейшего выполнения задания возможны изменения.
 
 ---
 ### Создание Kubernetes кластера
@@ -322,19 +488,71 @@ Do you want to perform these actions in workspace "stage"?
 
 1. Работоспособный Kubernetes кластер.
 
-Ответ: Кластер создан с помощью Yandex Managed Service for Kubernetes
+Ответ: Кластер создан с помощью Yandex Managed Service for Kubernetes, создано три ноды, создан региональный кластер, с размещением нод в разных 3 подсетях
 
 2. В файле `~/.kube/config` находятся данные для доступа к кластеру.
 
 Ответ: Конфигурационный файл получен для созданного кластера с помощью команды 
+
+```
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJek1Ea3hOREU0TWpFd09Wb1hEVE16TURreE1URTRNakV3T1Zvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTWF3CmlwMVNiS1Fkb0IxUjdVWTZpeStKNUYxVkUxTENLczZrenVwVVJkTXNOWXZiM1ZrUjlOb3A5cnVsY2UvOGYxK0kKdDZBdzRIZWZuZnVJUlFXRThtdThxUUQxZ0h4N25VWmVNZmZtRWk2OTNrdVNKRzNtZlJ2OXBoeXQxV2MvU0h1QgpLRmhVaTRBQ0hKZjlnYVp2YUltSnovV0ZNZnlLdUNONDc2M3d4TXVrWllrTUY5aVpHN0F3L0tKZThBNSswNlBMCjBjYzl4R3hUcVVhMVJlK1FLbGlVNUFKT2lxdzR2WGdJdFBrZTBWTTEvY1pmM01WUExLdS9rRmpjbGtVUXpCZWoKaFhzZUp5bDNuMHZSRXRzZFpQUXVuSlNZcDYyV20xRlBEeHZ1UVAxN2hYTnV5cm1Wek56cVdoVVJtcWlTQW4wKwpoZkpybk5SMzdZOFBWekZ4ZFhFQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZHV2lsaDN3LzFGYmV5ZlZOL2VIenhtTG5lQlFNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFCM0wxU3daM0lXUDJINjFDLzA5bVk1Ny9nYWVacVYrdlVQc3BuNmdmd3MzN21QRE9wOQpycDRGZi9YTGdrZ1NVT3BycVRBREhVMlpWeUhoKzJsOFpkVENodW0yYlVWbm5GQWlkZ09WdWRvM1QrV0tndC9oClR4Yjk1V3pUS1JwYkdUNytoRnhSUXJ4VmRMRDZPcjlhWVBqU3ZYVFJ4ZWd6R1AwOStKTXRwK2hBRk0xa01Md3UKSE5TT0hHbHJrbzNXZE1PTHB1bUhFWW1xUXJvR0VXVk13bjJKeW1paGgzRFNCb2ZkTmQ1RG16SjBrd0dqaHJZSQovb1ZTdVNyZGxveGFHQlk4SjdBUTNRLzhDSlFMckF3bXhmV2VRWWgzNHJiVTlZeGNzL3JaV0Rsdmorbjh3M0d2CjlWSVM3UDUrTDY5a1hZMTZzRUkvamRWcjR1U0tsallNQzJ4VgotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    server: https://158.160.29.61
+  name: yc-managed-k8s-catd205ilrqs17rokmj9
+contexts:
+- context:
+    cluster: yc-managed-k8s-catd205ilrqs17rokmj9
+    user: yc-managed-k8s-catd205ilrqs17rokmj9
+  name: yc-managed-k8s-catd205ilrqs17rokmj9
+current-context: yc-managed-k8s-catd205ilrqs17rokmj9
+kind: Config
+preferences: {}
+users:
+- name: yc-managed-k8s-catd205ilrqs17rokmj9
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      args:
+      - k8s
+      - create-token
+      - --profile=lugter
+      command: C:\Users\lugy1\yandex-cloud\bin\yc.exe
+      env: null
+      provideClusterInfo: false
+
+```
 
 3. Команда `kubectl get pods --all-namespaces` отрабатывает без ошибок.
 
 Ответ: Результат выполнения команды
 
 ```
-
+PS C:\Users\lugy1\terraform_yandex_k8s> kubectl get pods --all-namespaces
+NAMESPACE     NAME                                   READY   STATUS    RESTARTS   AGE
+kube-system   coredns-84b7668fb4-4b65s               1/1     Running   0          22m
+kube-system   coredns-84b7668fb4-b9d62               1/1     Running   0          18m
+kube-system   ip-masq-agent-4zkww                    1/1     Running   0          18m
+kube-system   ip-masq-agent-9ll89                    1/1     Running   0          18m
+kube-system   ip-masq-agent-p97x5                    1/1     Running   0          18m
+kube-system   kube-dns-autoscaler-75b9577f68-mw4q8   1/1     Running   0          21m
+kube-system   kube-proxy-cpxqt                       1/1     Running   0          18m
+kube-system   kube-proxy-ktzqp                       1/1     Running   0          18m
+kube-system   kube-proxy-nj2gs                       1/1     Running   0          18m
+kube-system   metrics-server-6f8c7f57fd-qqn9b        2/2     Running   0          18m
+kube-system   npd-v0.8.0-bbsvb                       1/1     Running   0          18m
+kube-system   npd-v0.8.0-crxhh                       1/1     Running   0          18m
+kube-system   npd-v0.8.0-rw4vf                       1/1     Running   0          18m
+kube-system   yc-disk-csi-node-v2-c8kgb              6/6     Running   0          18m
+kube-system   yc-disk-csi-node-v2-xmvt6              6/6     Running   0          18m
+kube-system   yc-disk-csi-node-v2-xng5b              6/6     Running   0          18m
 ```
+Подключение через Lens
+
+![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/77e58013-6658-4ff4-a847-a47c0e8d9a71)
+
+
 ---
 ### Создание тестового приложения
 
@@ -354,7 +572,7 @@ Do you want to perform these actions in workspace "stage"?
 
 Ответ: Ссылка на репозиторий с тестовым приложением https://github.com/LugovskoyPavel/nginx_sample.git
 
-В качестве приложение выбран простой nginx сервер
+В качестве приложение выбран простой nginx сервер cо стартовой страницей
 
 2. Регистр с собранным docker image. В качестве регистра может быть DockerHub или [Yandex Container Registry](https://cloud.yandex.ru/services/container-registry), созданный также с помощью terraform.
 
