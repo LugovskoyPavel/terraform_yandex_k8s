@@ -23,10 +23,9 @@ spec:
     spec:
       containers:
       - name: lug-nginx
-        image: cr.yandex/crp52u9gli262gfbvk5r/my-registry:main
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
+        image: cr.yandex/crpi4teo9tu5cb122650/my-registry:main
+        imagePullPolicy: IfNotPresent
+        
 ---
 kind: Service
 apiVersion: v1
@@ -38,7 +37,9 @@ metadata:
 spec:
   ports:
   - protocol: TCP
-    port: 8080
+    port: 80
+    targetPort: 80
+    nodePort: 30080
   selector:
     k8s-app: lug-app
-  type: LoadBalancer
+  type: NodePort
