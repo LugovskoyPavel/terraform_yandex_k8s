@@ -685,19 +685,86 @@ jobs:
 Ожидаемый результат:
 1. Git репозиторий с конфигурационными файлами для настройки Kubernetes.
 
-Ответ:
+Ответ: В качестве способа выполнения  воспользовался пакетом kube-prometheus
+
+![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/bc6097c0-0050-47cd-a8b1-46f937ce18f2)
+
 2. Http доступ к web интерфейсу grafana.
 
-Ответ:
+Ответ: Доступ по  по адресу: http://51.250.33.86:30811
 
 3. Дашборды в grafana отображающие состояние Kubernetes кластера.
 
-Ответ:
+Ответ: Скриншоты дашбордов grafana
+
+![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/e734a2d0-180c-4d1e-94e9-6e57c61f5cb4)
+
+![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/d51c58a1-35f1-48f5-ba77-36482afd0e32)
+
 
 4. Http доступ к тестовому приложению.
-Ответ: Доступ к тестовому приложению
 
-![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/135dd4e2-764d-423e-ae1d-deb4177655f0)
+Ответ: Тестовое приложение собрано
+
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netology
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: lug-app
+  namespace: netology
+  labels:
+    k8s-app: lug-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: lug-app
+  template:
+    metadata:
+      name: lug-app
+      labels:
+        k8s-app: lug-app
+    spec:
+      containers:
+      - name: lug-nginx
+        image: cr.yandex/crpjtbfk7rh581pgd1hk/my-registry:main
+        imagePullPolicy: IfNotPresent
+        
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginx-lug
+  namespace: netology
+  labels:
+    k8s-app: lug-app
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30080
+  selector:
+    k8s-app: lug-app
+  type: NodePort
+```
+И установлено
+
+```
+PS C:\Users\lugy1\terraform_yandex_k8s> kubectl apply -f nginx_install.yaml
+namespace/netology created
+deployment.apps/lug-app created
+service/nginx-lug created
+```
+Доступ к тестовому приложению http://51.250.33.86:30080/
+
+![image](https://github.com/LugovskoyPavel/terraform_yandex_k8s/assets/104651372/9e9becda-b01c-4317-9c34-1c20c5f95e03)
+
 
 
 ---
