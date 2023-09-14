@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: lug-nginx
-        image: cr.yandex/crpi4teo9tu5cb122650/my-registry:main
+        image: cr.yandex/crpjtbfk7rh581pgd1hk/my-registry:main
         imagePullPolicy: IfNotPresent
         
 ---
