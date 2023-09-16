@@ -21,7 +21,7 @@ terraform {
 
 provider "yandex" {
   zone = "ru-central1-a"
-  service_account_key_file = file("keys/authorized_key.json")
+  service_account_key_file = "Keys/authorized_key.json"
   cloud_id  = "${var.yandex_cloud_id}"
   folder_id = "${var.yandex_folder_id}"
 }
